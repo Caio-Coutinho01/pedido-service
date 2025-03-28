@@ -1,24 +1,46 @@
-using Microsoft.AspNetCore.Http.Json;
-using System.Text.Json;
+using Serilog;
+using Microsoft.FeatureManagement;
+using Microsoft.EntityFrameworkCore;
+using Pedido.Infrastructure.Persistence.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+#region Serilog
+// Configuração do Serilog
+builder.Host.UseSerilog((context, loggerConfig) =>
+{
+    loggerConfig
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console();
+});
+#endregion
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+#region Add Services
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.Configure<JsonOptions>(options =>
-{
-    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-});
+// Feature Management
+builder.Services.AddFeatureManagement();
 
+// DbContext
+builder.Services.AddDbContext<PedidoDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+#endregion
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+#region Middleware
+// Logging
+app.UseSerilogRequestLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -30,5 +52,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+#endregion
 
 app.Run();

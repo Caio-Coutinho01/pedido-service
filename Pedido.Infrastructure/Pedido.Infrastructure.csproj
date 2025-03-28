@@ -16,4 +16,15 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="ExternalServices\" />
+    <Folder Include="DependencyInjection\" />
+    <Folder Include="Repositories\" />
+    <Folder Include="Persistence\Configurations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pedido.Domain\Pedido.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
