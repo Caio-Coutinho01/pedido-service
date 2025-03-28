@@ -2,6 +2,8 @@ using Serilog;
 using Microsoft.FeatureManagement;
 using Microsoft.EntityFrameworkCore;
 using Pedido.Infrastructure.Persistence.Context;
+using Pedido.Application.Interfaces;
+using Pedido.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +31,9 @@ builder.Services.AddSwaggerGen();
 
 // Feature Management
 builder.Services.AddFeatureManagement();
+
+// Service de pedidos
+builder.Services.AddScoped<IPedidoService, PedidoService>();
 
 // DbContext
 builder.Services.AddDbContext<PedidoDbContext>(options =>
