@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Pedido.Application.DTOs;
 using Pedido.Application.Interfaces;
+using Pedido.Domain.Enums;
 
 namespace Pedido.API.Controllers
 {
@@ -39,6 +40,20 @@ namespace Pedido.API.Controllers
                 return NotFound(new {erro = "Pedido não encontrado." });
 
             return Ok(pedido);
+        }
+
+        [HttpGet("status")]
+        public async Task<IActionResult> ListarPorStatus([FromQuery] PedidoStatus status)
+        {
+            try
+            {
+                var pedidos = await _pedidoService.ListarPedidosPorStatusAsync(status);
+                return Ok(pedidos);
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { Erro = ex.Message });
+            }
         }
 
     }

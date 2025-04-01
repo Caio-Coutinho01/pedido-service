@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Pedido.Application.DTOs;
@@ -14,12 +15,14 @@ namespace Pedido.Application.Services
         private readonly PedidoDbContext _context;
         private readonly IFeatureManager _featureManager;
         private readonly ILogger<PedidoService> _logger;
+        private readonly IMapper _mapper;
 
-        public PedidoService(PedidoDbContext context, IFeatureManager featureManager, ILogger<PedidoService> logger)
+        public PedidoService(PedidoDbContext context, IFeatureManager featureManager, ILogger<PedidoService> logger, IMapper mapper)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
         public async Task<CriarPedidoResponseDTO> CriarPedidoAsync(CriarPedidoRequestDTO requestDto)
@@ -32,18 +35,8 @@ namespace Pedido.Application.Services
                 if (pedidoDuplicado)
                     throw new InvalidOperationException("Este pedido já existe.");
 
-                var pedido = new PedidoEntity
-                {
-                    PedidoId = requestDto.PedidoId,
-                    ClienteId = requestDto.ClienteId,
-                    Status = PedidoStatus.Criado,
-                    Itens = requestDto.Itens.Select(i => new PedidoItemEntity
-                    {
-                        ProdutoId = i.ProdutoId,
-                        Quantidade = i.Quantidade,
-                        Valor = i.Valor
-                    }).ToList()
-                };
+                var pedido = _mapper.Map<PedidoEntity>(requestDto);
+                pedido.Status = PedidoStatus.Criado;
 
                 var usarNovaRegra = await _featureManager.IsEnabledAsync("usarNovaRegraImposto");
                 pedido.CalcularImposto(usarNovaRegra);
@@ -51,12 +44,7 @@ namespace Pedido.Application.Services
                 _context.Pedidos.Add(pedido);
                 await _context.SaveChangesAsync();
 
-                return new CriarPedidoResponseDTO
-                {
-                    Id = pedido.Id,
-                    Status = pedido.Status.ToString()
-                };
-
+                return _mapper.Map<CriarPedidoResponseDTO>(pedido);
 
             }
             catch (Exception ex)
@@ -77,25 +65,31 @@ namespace Pedido.Application.Services
                 if (pedido == null)
                     return null;
 
-                return new ConsultarPedidoResponseDTO
-                {
-                    Id = pedido.Id,
-                    PedidoId = pedido.PedidoId,
-                    ClienteId = pedido.ClienteId,
-                    Imposto = pedido.Imposto,
-                    Status = pedido.Status.ToString(),
-                    Itens = pedido.Itens.Select(i => new ItemPedidoDTO
-                    {
-                        ProdutoId = i.ProdutoId,
-                        Quantidade = i.Quantidade,
-                        Valor = i.Valor
-                    }).ToList()
-                };
+                return _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao criar o pedido com Id: {Id}", id);
                 throw new ApplicationException($"Erro ao consultar o pedido {id}.", ex);
+            }
+        }
+
+
+        public async Task<List<ConsultarPedidoResponseDTO>> ListarPedidosPorStatusAsync(PedidoStatus status)
+        {
+            try
+            {
+                var pedidos = await _context.Pedidos
+                    .Include(x => x.Itens)
+                    .Where(x => x.Status == status)
+                    .ToListAsync();
+
+                return _mapper.Map<List<ConsultarPedidoResponseDTO>>(pedidos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao listar pedidos por status: {Status}", status);
+                throw new ApplicationException($"Erro ao listar pedidos por status {status}.", ex);
             }
         }
     }
