@@ -9,7 +9,6 @@ using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Pedido.Domain.Enums;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog

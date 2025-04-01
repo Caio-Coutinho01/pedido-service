@@ -38,7 +38,7 @@ namespace Pedido.Application.Services
                 var pedido = _mapper.Map<PedidoEntity>(requestDto);
                 pedido.Status = PedidoStatus.Criado;
 
-                var usarNovaRegra = await _featureManager.IsEnabledAsync("usarNovaRegraImposto");
+                var usarNovaRegra = await _featureManager.IsEnabledAsync("UsarNovaRegraImposto");
                 pedido.CalcularImposto(usarNovaRegra);
 
                 _context.Pedidos.Add(pedido);
