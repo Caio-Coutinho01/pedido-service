@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Pedido.Application.DTOs;
 using Pedido.Application.Interfaces;
+using Pedido.Domain.Constants;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
 using Pedido.Domain.Interfaces;
@@ -36,7 +37,7 @@ namespace Pedido.Application.Services
                 var pedido = _mapper.Map<PedidoEntity>(requestDto);
                 pedido.Status = PedidoStatus.Criado;
 
-                var usarNovaRegra = await _featureManager.IsEnabledAsync("UsarNovaRegraImposto");
+                var usarNovaRegra = await _featureManager.IsEnabledAsync(FeatureFlags.UsarNovaRegraImposto);
                 pedido.CalcularImposto(usarNovaRegra);
 
                 await _pedidoRepository.AdicionarAsync(pedido);
@@ -59,7 +60,7 @@ namespace Pedido.Application.Services
                 var pedido = await _pedidoRepository.ObterPorIdAsync(id);
 
                 if (pedido == null)
-                    return null;
+                    throw new ApplicationException($"Pedido não encontrado com o ID: {id}");
 
                 return _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
             }

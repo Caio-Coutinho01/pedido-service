@@ -1,25 +1,26 @@
 ﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using NSubstitute;
 using Pedido.Application.Mappings;
 using Pedido.Application.Services;
-using Pedido.Infrastructure.Persistence.Context;
+using Pedido.Domain.Constants;
+using Pedido.Domain.Interfaces;
 
 namespace TestInfrastructure
 {
     public static class ServiceTestFactory
     {
-        public static ServiceProvider BuildServiceProvider(DbContextOptions<PedidoDbContext> dbContextOptions, bool usarNovaRegraImposto = false)
+        public static ServiceProvider BuildServiceProvider(bool usarNovaRegraImposto = false)
         {
             var services = new ServiceCollection();
 
-            services.AddScoped(_ => new PedidoDbContext(dbContextOptions));
+            var pedidoRepository = Substitute.For<IPedidoRepository>();
+            services.AddSingleton(pedidoRepository);
 
             var featureManager = Substitute.For<IFeatureManager>();
-            featureManager.IsEnabledAsync("UsarNovaRegraImposto").Returns(Task.FromResult(usarNovaRegraImposto));
+            featureManager.IsEnabledAsync(FeatureFlags.UsarNovaRegraImposto).Returns(Task.FromResult(usarNovaRegraImposto));
             services.AddSingleton(featureManager);
 
             services.AddSingleton(Substitute.For<ILogger<PedidoService>>());
