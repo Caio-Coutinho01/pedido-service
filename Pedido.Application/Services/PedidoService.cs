@@ -1,25 +1,24 @@
 ﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Pedido.Application.DTOs;
 using Pedido.Application.Interfaces;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
-using Pedido.Infrastructure.Persistence.Context;
+using Pedido.Domain.Interfaces;
 
 namespace Pedido.Application.Services
 {
     public class PedidoService : IPedidoService
     {
-        private readonly PedidoDbContext _context;
+        private readonly IPedidoRepository _pedidoRepository;
         private readonly IFeatureManager _featureManager;
         private readonly ILogger<PedidoService> _logger;
         private readonly IMapper _mapper;
 
-        public PedidoService(PedidoDbContext context, IFeatureManager featureManager, ILogger<PedidoService> logger, IMapper mapper)
+        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager, ILogger<PedidoService> logger, IMapper mapper)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _pedidoRepository = pedidoRepository ?? throw new ArgumentNullException(nameof(pedidoRepository));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -29,8 +28,7 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedidoDuplicado = await _context.Pedidos
-                    .AnyAsync(p => p.PedidoId == requestDto.PedidoId);
+                var pedidoDuplicado = await _pedidoRepository.PedidoExisteAsync(requestDto.PedidoId);
 
                 if (pedidoDuplicado)
                     throw new InvalidOperationException("Este pedido já existe.");
@@ -41,8 +39,8 @@ namespace Pedido.Application.Services
                 var usarNovaRegra = await _featureManager.IsEnabledAsync("UsarNovaRegraImposto");
                 pedido.CalcularImposto(usarNovaRegra);
 
-                _context.Pedidos.Add(pedido);
-                await _context.SaveChangesAsync();
+                await _pedidoRepository.AdicionarAsync(pedido);
+                await _pedidoRepository.SalvarAlteracoesAsync();
 
                 return _mapper.Map<CriarPedidoResponseDTO>(pedido);
 
@@ -58,9 +56,7 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedido = await _context.Pedidos
-                    .Include(x => x.Itens)
-                    .FirstOrDefaultAsync(x => x.Id == id);
+                var pedido = await _pedidoRepository.ObterPorIdAsync(id);
 
                 if (pedido == null)
                     return null;
@@ -79,10 +75,7 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedidos = await _context.Pedidos
-                    .Include(x => x.Itens)
-                    .Where(x => x.Status == status)
-                    .ToListAsync();
+                var pedidos = await _pedidoRepository.ObterPorStatusAsync(status);
 
                 return _mapper.Map<List<ConsultarPedidoResponseDTO>>(pedidos);
             }

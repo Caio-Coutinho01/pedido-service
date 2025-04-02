@@ -1,13 +1,10 @@
-using Serilog;
-using Microsoft.FeatureManagement;
 using Microsoft.EntityFrameworkCore;
-using Pedido.Infrastructure.Persistence.Context;
-using Pedido.Application.Interfaces;
-using Pedido.Application.Services;
-using Pedido.Application.Mappings;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using Pedido.Application.Configuration;
 using Pedido.Domain.Enums;
+using Pedido.Infrastructure.DependencyInjection;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,16 +39,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Feature Management
-builder.Services.AddFeatureManagement();
-
-// Service de pedidos
-builder.Services.AddScoped<IPedidoService, PedidoService>();
-builder.Services.AddAutoMapper(typeof(PedidoProfile));
-
 // DbContext
-builder.Services.AddDbContext<PedidoDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddInfrastructure(connectionString).AddApplication();
 #endregion
 
 var app = builder.Build();

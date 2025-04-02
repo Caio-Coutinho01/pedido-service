@@ -29,9 +29,4 @@
     <ProjectReference Include="..\Pedido.Infrastructure\Pedido.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Builders\" />
-    <Folder Include="Fakes\" />
-  </ItemGroup>
-
 </Project>
