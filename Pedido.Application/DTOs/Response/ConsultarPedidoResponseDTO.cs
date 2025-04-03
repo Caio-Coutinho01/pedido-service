@@ -1,4 +1,7 @@
-﻿namespace Pedido.Application.DTOs
+﻿using Pedido.Application.DTOs.Request;
+using System.Text.Json.Serialization;
+
+namespace Pedido.Application.DTOs.Response
 {
     public class ConsultarPedidoResponseDTO
     {
@@ -8,5 +11,8 @@
         public decimal Imposto { get; set; }
         public string Status { get; set; }
         public List<ItemPedidoDTO> Itens { get; set; } = new();
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JustificativaCancelamento { get; set; }
     }
 }
