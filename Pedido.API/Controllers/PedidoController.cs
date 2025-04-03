@@ -16,7 +16,10 @@ namespace Pedido.API.Controllers
             _pedidoService = pedidoService ?? throw new ArgumentNullException(nameof(pedidoService));
         }
 
-
+        /// <summary>
+        /// Criar um novo pedido.
+        /// </summary>
+        /// <returns>Status de sucesso</returns>
         [HttpPost]
         public async Task<IActionResult> CriarPedido(CriarPedidoRequestDTO request)
         {
@@ -31,6 +34,11 @@ namespace Pedido.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Consultar um pedido existente pelo Id.
+        /// </summary>
+        /// <param name="id">Identificador do pedido</param>
+        /// <returns>Status de sucesso</returns>
         [HttpGet("{id}")]
         public async Task<IActionResult> ConsultarPedido(int id)
         {
@@ -42,6 +50,11 @@ namespace Pedido.API.Controllers
             return Ok(pedido);
         }
 
+        /// <summary>
+        /// Consultar pedidos por status.
+        /// </summary>
+        /// <param name="status"></param>
+        /// <returns>Status de sucesso</returns>
         [HttpGet("status")]
         public async Task<IActionResult> ListarPorStatus([FromQuery] PedidoStatus status)
         {
@@ -56,6 +69,12 @@ namespace Pedido.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Cancelar um pedido existente.
+        /// </summary>
+        /// <param name="id">Identificador do pedido</param>
+        /// <param name="dto">Justificativa do cancelamento</param>
+        /// <returns>Status de sucesso</returns>
         [HttpPut("{id}/cancelar")]
         public async Task<IActionResult> CancelarPedido(int id, [FromBody] CancelarPedidoRequestDTO dto)
         {

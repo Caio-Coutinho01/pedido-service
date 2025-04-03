@@ -6,6 +6,7 @@ using Pedido.Application.Configuration;
 using Pedido.Domain.Enums;
 using Pedido.Infrastructure.DependencyInjection;
 using Serilog;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,12 +29,17 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Pedido.API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Pedido.API", Version = "v1" });
     c.MapType<PedidoStatus>(() => new OpenApiSchema
     {
         Type = "string",
         Enum = Enum.GetNames(typeof(PedidoStatus)).Select(n => new OpenApiString(n)).Cast<IOpenApiAny>().ToList()
     });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+    c.EnableAnnotations();
 });
 
 // DbContext
