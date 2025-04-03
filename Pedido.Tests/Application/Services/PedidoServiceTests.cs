@@ -1,6 +1,8 @@
-﻿using FluentAssertions;
+﻿using AutoMapper;
+using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pedido.Application.DTOs;
 using Pedido.Application.Services;
 using Pedido.Domain.Entities;
@@ -126,6 +128,30 @@ namespace Pedido.Tests.Application.Services
             await repository.Received(1).SalvarAlteracoesAsync();
         }
 
+        [Fact]
+        public async Task CriarPedidoAsync_MapperLancaExcecao_DeveLancarExcecao()
+        {
+            var mapper = Substitute.For<IMapper>();
+            mapper.Map<PedidoEntity>(Arg.Any<CriarPedidoRequestDTO>()).Throws(new Exception("Erro no AutoMapper"));
+
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider(mapper: mapper);
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+
+            var request = new CriarPedidoRequestDTO
+            {
+                PedidoId = 10,
+                ClienteId = 5,
+                Itens = new List<ItemPedidoDTO> { new() { ProdutoId = 200, Quantidade = 1, Valor = 100 } }
+            };
+
+            Func<Task> act = async () => await service.CriarPedidoAsync(request);
+
+            var exception = await act.Should().ThrowAsync<ApplicationException>();
+            exception.Which.InnerException!.Message.Should().Be("Erro no AutoMapper");
+        }
+
+
         #endregion
 
         #region Consulta do pedido
@@ -222,6 +248,39 @@ namespace Pedido.Tests.Application.Services
             exception.Which.Message.Should().Be("Erro ao consultar o pedido 1.");
             exception.Which.InnerException.Should().BeOfType<ApplicationException>();
             exception.Which.InnerException!.Message.Should().Be("Pedido não encontrado com o ID: 1");
+        }
+
+        [Fact]
+        public async Task ListarPedidosPorStatusAsync_ErroNoRepositorio_DeveLancarExcecao()
+        {
+            var repository = Substitute.For<IPedidoRepository>();
+            repository.ObterPorStatusAsync(Arg.Any<PedidoStatus>())
+                      .Throws(new Exception("Falha ao acessar o repositório"));
+
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider(pedidoRepositoryMock: repository);
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+
+            Func<Task> act = async () => await service.ListarPedidosPorStatusAsync(PedidoStatus.Criado);
+
+            var exception = await act.Should().ThrowAsync<ApplicationException>();
+            exception.Which.InnerException!.Message.Should().Be("Falha ao acessar o repositório");
+        }
+
+        [Fact]
+        public async Task ConsultarPedidoPorIdAsync_PedidoNaoEncontrado_DeveLancarExcecao()
+        {
+            var repository = Substitute.For<IPedidoRepository>();
+            repository.ObterPorIdAsync(Arg.Any<int>()).Returns((PedidoEntity?)null);
+
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider(pedidoRepositoryMock: repository);
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+
+            Func<Task> act = async () => await service.ConsultarPedidoPorIdAsync(999);
+
+            var exception = await act.Should().ThrowAsync<ApplicationException>();
+            exception.Which.InnerException!.Message.Should().Be("Pedido não encontrado com o ID: 999");
         }
 
         #endregion

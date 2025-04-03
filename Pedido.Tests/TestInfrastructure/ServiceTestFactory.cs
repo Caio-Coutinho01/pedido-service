@@ -12,24 +12,35 @@ namespace TestInfrastructure
 {
     public static class ServiceTestFactory
     {
-        public static ServiceProvider BuildServiceProvider(bool usarNovaRegraImposto = false)
+        public static ServiceProvider BuildServiceProvider(
+            bool usarNovaRegraImposto = false, 
+            IPedidoRepository? pedidoRepositoryMock = null, 
+            ILogger<PedidoService>? loggerMock = null, 
+            IMapper? mapper = null)
         {
             var services = new ServiceCollection();
 
-            var pedidoRepository = Substitute.For<IPedidoRepository>();
-            services.AddSingleton(pedidoRepository);
+            var repository = pedidoRepositoryMock ?? Substitute.For<IPedidoRepository>();
+            services.AddSingleton(repository);
 
             var featureManager = Substitute.For<IFeatureManager>();
             featureManager.IsEnabledAsync(FeatureFlags.UsarNovaRegraImposto).Returns(Task.FromResult(usarNovaRegraImposto));
             services.AddSingleton(featureManager);
 
-            services.AddSingleton(Substitute.For<ILogger<PedidoService>>());
+            services.AddSingleton(loggerMock ?? Substitute.For<ILogger<PedidoService>>());
 
-            var mapperConfig = new MapperConfiguration(cfg =>
+            if (mapper != null)
             {
-                cfg.AddProfile<PedidoProfile>();
-            });
-            services.AddSingleton(mapperConfig.CreateMapper());
+                services.AddSingleton(mapper);
+            }
+            else
+            {
+                var mapperConfig = new MapperConfiguration(cfg =>
+                {
+                    cfg.AddProfile<PedidoProfile>();
+                });
+                services.AddSingleton(mapperConfig.CreateMapper());
+            }
 
             services.AddScoped<PedidoService>();
 
