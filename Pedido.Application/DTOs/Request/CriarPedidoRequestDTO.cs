@@ -1,4 +1,4 @@
-﻿namespace Pedido.Application.DTOs
+﻿namespace Pedido.Application.DTOs.Request
 {
     public class CriarPedidoRequestDTO
     {

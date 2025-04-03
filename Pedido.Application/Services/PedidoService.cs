@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
-using Pedido.Application.DTOs;
+using Pedido.Application.DTOs.Request;
+using Pedido.Application.DTOs.Response;
 using Pedido.Application.Interfaces;
 using Pedido.Domain.Constants;
 using Pedido.Domain.Entities;
@@ -84,6 +85,34 @@ namespace Pedido.Application.Services
             {
                 _logger.LogError(ex, "Erro ao listar pedidos por status: {Status}", status);
                 throw new ApplicationException($"Erro ao listar pedidos por status {status}.", ex);
+            }
+        }
+
+        public async Task<CancelarPedidoResponseDTO> CancelarPedidoAsync(int id, CancelarPedidoRequestDTO dto)
+        {
+            try
+            {
+                var pedido = await _pedidoRepository.ObterPorIdAsync(id);
+
+                if (pedido == null)
+                    throw new ApplicationException($"Pedido não encontrado com o ID: {id}");
+
+                if (pedido.Status != PedidoStatus.Criado)
+                    throw new ApplicationException($"O Pedido {id} não pode ser cancelado, pois já está em processamento ou cancelado!");
+
+                pedido.CancelarPedido(dto.JustificativaCancelamento);
+                await _pedidoRepository.SalvarAlteracoesAsync();
+
+                return new CancelarPedidoResponseDTO
+                {
+                    Sucesso = true,
+                    Mensagem = $"Pedido {id} cancelado com sucesso."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao cancelar o pedido com Id: {Id}", id);
+                throw new ApplicationException($"Erro ao cancelar o pedido {id}.", ex);
             }
         }
     }

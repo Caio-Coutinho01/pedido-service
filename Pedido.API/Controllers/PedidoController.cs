@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Pedido.Application.DTOs;
+using Pedido.Application.DTOs.Request;
 using Pedido.Application.Interfaces;
 using Pedido.Domain.Enums;
 
@@ -55,6 +55,21 @@ namespace Pedido.API.Controllers
                 return BadRequest(new { Erro = ex.Message });
             }
         }
+
+        [HttpPut("{id}/cancelar")]
+        public async Task<IActionResult> CancelarPedido(int id, [FromBody] CancelarPedidoRequestDTO dto)
+        {
+            try
+            {
+                var resultado = await _pedidoService.CancelarPedidoAsync(id, dto);
+                return Ok(resultado);
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { Erro = ex.Message });
+            }
+        }
+
 
     }
 }

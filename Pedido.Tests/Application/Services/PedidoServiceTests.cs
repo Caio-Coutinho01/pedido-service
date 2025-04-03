@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Pedido.Application.DTOs;
+using Pedido.Application.DTOs.Request;
 using Pedido.Application.Services;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
