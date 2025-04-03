@@ -8,7 +8,6 @@ using Pedido.Infrastructure.DependencyInjection;
 using Serilog;
 using System.Reflection;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
