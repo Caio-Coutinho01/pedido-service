@@ -1,9 +1,12 @@
 ﻿using AutoMapper;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Pedido.Application.DTOs.Request;
 using Pedido.Application.DTOs.Response;
+using Pedido.Application.Events;
 using Pedido.Application.Interfaces;
+using Pedido.Application.Interfaces.Integrations.PedidoDestino;
 using Pedido.Domain.Constants;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
@@ -17,13 +20,18 @@ namespace Pedido.Application.Services
         private readonly IFeatureManager _featureManager;
         private readonly ILogger<PedidoService> _logger;
         private readonly IMapper _mapper;
+        private readonly IPedidoDestinoService _pedidoDestinoService;
+        private readonly IMediator _mediator;
 
-        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager, ILogger<PedidoService> logger, IMapper mapper)
+        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager, 
+            ILogger<PedidoService> logger, IMapper mapper, IPedidoDestinoService pedidoDestinoService, IMediator mediator)
         {
             _pedidoRepository = pedidoRepository ?? throw new ArgumentNullException(nameof(pedidoRepository));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _pedidoDestinoService = pedidoDestinoService ?? throw new ArgumentNullException(nameof(pedidoDestinoService));
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         }
 
         public async Task<CriarPedidoResponseDTO> CriarPedidoAsync(CriarPedidoRequestDTO requestDto)
@@ -43,6 +51,9 @@ namespace Pedido.Application.Services
 
                 await _pedidoRepository.AdicionarAsync(pedido);
                 await _pedidoRepository.SalvarAlteracoesAsync();
+
+                var response = _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
+                await _mediator.Publish(new PedidoCriadoEvent(response));
 
                 return _mapper.Map<CriarPedidoResponseDTO>(pedido);
 

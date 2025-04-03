@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
@@ -10,12 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
 // Configuração do Serilog
-builder.Host.UseSerilog((context, loggerConfig) =>
+builder.Host.UseSerilog((context, services, configuration) =>
 {
-    loggerConfig
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console();
+    configuration.ReadFrom.Configuration(context.Configuration).Enrich.FromLogContext().WriteTo.Console();
 });
 #endregion
 
@@ -34,8 +32,7 @@ builder.Services.AddSwaggerGen(c =>
     c.MapType<PedidoStatus>(() => new OpenApiSchema
     {
         Type = "string",
-        Enum = Enum.GetNames(typeof(PedidoStatus))
-            .Select(n => new OpenApiString(n)).Cast<IOpenApiAny>().ToList()
+        Enum = Enum.GetNames(typeof(PedidoStatus)).Select(n => new OpenApiString(n)).Cast<IOpenApiAny>().ToList()
     });
 });
 
@@ -44,6 +41,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddInfrastructure(connectionString).AddApplication();
+
+// MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Pedido.Application.AssemblyReference).Assembly));
+
 #endregion
 
 var app = builder.Build();

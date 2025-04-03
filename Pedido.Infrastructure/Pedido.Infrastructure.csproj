@@ -19,10 +19,12 @@
   <ItemGroup>
     <Folder Include="ExternalServices\" />
     <Folder Include="Persistence\Configurations\" />
+    <Folder Include="Integrations\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Pedido.Domain\Pedido.Domain.csproj" />
+    <ProjectReference Include="..\Pedido.Application\Pedido.Application.csproj" />
   </ItemGroup>
 
 </Project>
