@@ -1,25 +1,21 @@
-using Serilog;
-using Microsoft.FeatureManagement;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Pedido.Infrastructure.Persistence.Context;
-using Pedido.Application.Interfaces;
-using Pedido.Application.Services;
-using Pedido.Application.Mappings;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using Pedido.Application.Configuration;
 using Pedido.Domain.Enums;
+using Pedido.Infrastructure.DependencyInjection;
+using Serilog;
+using System.Reflection;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
 // Configuração do Serilog
-builder.Host.UseSerilog((context, loggerConfig) =>
+builder.Host.UseSerilog((context, services, configuration) =>
 {
-    loggerConfig
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console();
+    configuration.ReadFrom.Configuration(context.Configuration).Enrich.FromLogContext().WriteTo.Console();
 });
 #endregion
 
@@ -34,25 +30,28 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Pedido.API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Pedido.API", Version = "v1" });
     c.MapType<PedidoStatus>(() => new OpenApiSchema
     {
         Type = "string",
-        Enum = Enum.GetNames(typeof(PedidoStatus))
-            .Select(n => new OpenApiString(n)).Cast<IOpenApiAny>().ToList()
+        Enum = Enum.GetNames(typeof(PedidoStatus)).Select(n => new OpenApiString(n)).Cast<IOpenApiAny>().ToList()
     });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+    c.EnableAnnotations();
 });
 
-// Feature Management
-builder.Services.AddFeatureManagement();
-
-// Service de pedidos
-builder.Services.AddScoped<IPedidoService, PedidoService>();
-builder.Services.AddAutoMapper(typeof(PedidoProfile));
-
 // DbContext
-builder.Services.AddDbContext<PedidoDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddInfrastructure(connectionString).AddApplication();
+
+// MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Pedido.Application.AssemblyReference).Assembly));
+
 #endregion
 
 var app = builder.Build();

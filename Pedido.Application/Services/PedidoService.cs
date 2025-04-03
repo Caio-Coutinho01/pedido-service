@@ -1,36 +1,44 @@
 ﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
-using Pedido.Application.DTOs;
+using Pedido.Application.DTOs.Request;
+using Pedido.Application.DTOs.Response;
+using Pedido.Application.Events;
 using Pedido.Application.Interfaces;
+using Pedido.Application.Interfaces.Integrations.PedidoDestino;
+using Pedido.Domain.Constants;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
-using Pedido.Infrastructure.Persistence.Context;
+using Pedido.Domain.Interfaces;
 
 namespace Pedido.Application.Services
 {
     public class PedidoService : IPedidoService
     {
-        private readonly PedidoDbContext _context;
+        private readonly IPedidoRepository _pedidoRepository;
         private readonly IFeatureManager _featureManager;
         private readonly ILogger<PedidoService> _logger;
         private readonly IMapper _mapper;
+        private readonly IPedidoDestinoService _pedidoDestinoService;
+        private readonly IMediator _mediator;
 
-        public PedidoService(PedidoDbContext context, IFeatureManager featureManager, ILogger<PedidoService> logger, IMapper mapper)
+        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager, 
+            ILogger<PedidoService> logger, IMapper mapper, IPedidoDestinoService pedidoDestinoService, IMediator mediator)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _pedidoRepository = pedidoRepository ?? throw new ArgumentNullException(nameof(pedidoRepository));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _pedidoDestinoService = pedidoDestinoService ?? throw new ArgumentNullException(nameof(pedidoDestinoService));
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         }
 
         public async Task<CriarPedidoResponseDTO> CriarPedidoAsync(CriarPedidoRequestDTO requestDto)
         {
             try
             {
-                var pedidoDuplicado = await _context.Pedidos
-                    .AnyAsync(p => p.PedidoId == requestDto.PedidoId);
+                var pedidoDuplicado = await _pedidoRepository.PedidoExisteAsync(requestDto.PedidoId);
 
                 if (pedidoDuplicado)
                     throw new InvalidOperationException("Este pedido já existe.");
@@ -38,11 +46,14 @@ namespace Pedido.Application.Services
                 var pedido = _mapper.Map<PedidoEntity>(requestDto);
                 pedido.Status = PedidoStatus.Criado;
 
-                var usarNovaRegra = await _featureManager.IsEnabledAsync("usarNovaRegraImposto");
+                var usarNovaRegra = await _featureManager.IsEnabledAsync(FeatureFlags.UsarNovaRegraImposto);
                 pedido.CalcularImposto(usarNovaRegra);
 
-                _context.Pedidos.Add(pedido);
-                await _context.SaveChangesAsync();
+                await _pedidoRepository.AdicionarAsync(pedido);
+                await _pedidoRepository.SalvarAlteracoesAsync();
+
+                var response = _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
+                await _mediator.Publish(new PedidoCriadoEvent(response));
 
                 return _mapper.Map<CriarPedidoResponseDTO>(pedido);
 
@@ -58,12 +69,10 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedido = await _context.Pedidos
-                    .Include(x => x.Itens)
-                    .FirstOrDefaultAsync(x => x.Id == id);
+                var pedido = await _pedidoRepository.ObterPorIdAsync(id);
 
                 if (pedido == null)
-                    return null;
+                    throw new ApplicationException($"Pedido não encontrado com o ID: {id}");
 
                 return _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
             }
@@ -79,10 +88,7 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedidos = await _context.Pedidos
-                    .Include(x => x.Itens)
-                    .Where(x => x.Status == status)
-                    .ToListAsync();
+                var pedidos = await _pedidoRepository.ObterPorStatusAsync(status);
 
                 return _mapper.Map<List<ConsultarPedidoResponseDTO>>(pedidos);
             }
@@ -90,6 +96,34 @@ namespace Pedido.Application.Services
             {
                 _logger.LogError(ex, "Erro ao listar pedidos por status: {Status}", status);
                 throw new ApplicationException($"Erro ao listar pedidos por status {status}.", ex);
+            }
+        }
+
+        public async Task<CancelarPedidoResponseDTO> CancelarPedidoAsync(int id, CancelarPedidoRequestDTO dto)
+        {
+            try
+            {
+                var pedido = await _pedidoRepository.ObterPorIdAsync(id);
+
+                if (pedido == null)
+                    throw new ApplicationException($"Pedido não encontrado com o ID: {id}");
+
+                if (pedido.Status != PedidoStatus.Criado)
+                    throw new ApplicationException($"O Pedido {id} não pode ser cancelado, pois já está em processamento ou cancelado!");
+
+                pedido.CancelarPedido(dto.JustificativaCancelamento);
+                await _pedidoRepository.SalvarAlteracoesAsync();
+
+                return new CancelarPedidoResponseDTO
+                {
+                    Sucesso = true,
+                    Mensagem = $"Pedido {id} cancelado com sucesso."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao cancelar o pedido com Id: {Id}", id);
+                throw new ApplicationException($"Erro ao cancelar o pedido {id}.", ex);
             }
         }
     }

@@ -9,6 +9,7 @@ namespace Pedido.Domain.Entities
         public int ClienteId { get; set; }
         public decimal Imposto { get; set; }
         public PedidoStatus Status { get; set; }
+        public string? JustificativaCancelamento { get; set; }
 
         public List<PedidoItemEntity> Itens { get; set; } = new();
 
@@ -21,6 +22,12 @@ namespace Pedido.Domain.Entities
         {
             var total = CalculadValorTotalItens();
             Imposto = usarNovaRegra ? total * 0.2m : total * 0.3m;
+        }
+
+        public void CancelarPedido(string justificativa)
+        {
+            JustificativaCancelamento = justificativa;
+            Status = PedidoStatus.Cancelado;
         }
     }
 }
