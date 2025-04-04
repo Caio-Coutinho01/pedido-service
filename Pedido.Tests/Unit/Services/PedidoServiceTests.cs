@@ -12,7 +12,7 @@ using Pedido.Domain.Enums;
 using Pedido.Domain.Interfaces;
 using TestInfrastructure;
 
-namespace Pedido.Tests.Application.Services
+namespace Pedido.Tests.Unit.Services
 {
     public class PedidoServiceTests
     {
@@ -111,7 +111,7 @@ namespace Pedido.Tests.Application.Services
 
             repository.PedidoExisteAsync(Arg.Any<int>()).Returns(false);
             repository.AdicionarAsync(Arg.Any<PedidoEntity>()).Returns(Task.CompletedTask);
-            repository.SalvarAlteracoesAsync().Returns<Task>(_ => throw new Exception("Falha no banco"));
+            repository.SalvarAlteracoesAsync().Returns(_ => throw new Exception("Falha no banco"));
 
             var request = new CriarPedidoRequestDTO
             {
@@ -292,7 +292,7 @@ namespace Pedido.Tests.Application.Services
         [Fact]
         public async Task CancelarPedidoAsync_PedidoNaoCriado_DeveLancarExcecao()
         {
-            
+
             var serviceProvider = ServiceTestFactory.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
@@ -320,7 +320,7 @@ namespace Pedido.Tests.Application.Services
         [Fact]
         public async Task EnviarPedidosCriadosAsync_DeveEnviarPedidosEAlterarStatusParaEnviado()
         {
-            
+
             var serviceProvider = ServiceTestFactory.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
@@ -328,7 +328,7 @@ namespace Pedido.Tests.Application.Services
             var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
             var pedido1 = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
-            var pedido2 = PedidoEntity.Criar(102, 1002, PedidoStatus.Criado,new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
+            var pedido2 = PedidoEntity.Criar(102, 1002, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
             var pedidosCriados = new List<PedidoEntity> { pedido1, pedido2 };
 
             repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(pedidosCriados);
@@ -345,7 +345,7 @@ namespace Pedido.Tests.Application.Services
         [Fact]
         public async Task EnviarPedidosCriadosAsync_ErroAoSalvarAlteracoes_DeveLancarExcecao()
         {
-            
+
             var serviceProvider = ServiceTestFactory.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
@@ -353,7 +353,7 @@ namespace Pedido.Tests.Application.Services
 
             var pedido = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
             repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(new List<PedidoEntity> { pedido });
-            repository.SalvarAlteracoesAsync().Returns<Task>(_ => throw new Exception("Erro ao salvar"));
+            repository.SalvarAlteracoesAsync().Returns(_ => throw new Exception("Erro ao salvar"));
 
             Func<Task> act = async () => await service.EnviarPedidosCriadosAsync();
 

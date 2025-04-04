@@ -75,7 +75,7 @@ namespace Pedido.Application.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao criar o pedido com Id: {Id}", id);
+                _logger.LogError(ex, "Erro ao consultar o pedido com Id: {Id}", id);
                 throw new ApplicationException($"Erro ao consultar o pedido. {ex.Message}", ex);
             }
         }
