@@ -20,7 +20,7 @@ namespace Pedido.Infrastructure.Repositories
 
         public async Task<bool> PedidoExisteAsync(int pedidoId)
         {
-            return await _context.Pedidos.AnyAsync(p => p.Id == pedidoId);
+            return await _context.Pedidos.AnyAsync(p => p.PedidoId == pedidoId);
         }
 
         public async Task AdicionarAsync(PedidoEntity pedido)
@@ -35,7 +35,7 @@ namespace Pedido.Infrastructure.Repositories
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async Task<List<PedidoEntity>> ObterPorStatusAsync(PedidoStatus status)
+        public async Task<List<PedidoEntity>> ObterPedidosPorStatusAsync(PedidoStatus status)
         {
             return await _context.Pedidos
                 .Include(p => p.Itens)

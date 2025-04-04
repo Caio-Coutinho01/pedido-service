@@ -3,7 +3,7 @@
     public enum PedidoStatus
     {
         Criado = 1,
-        Processado = 2,
-        Cancelado = 3
+        Enviado = 2,
+        Cancelado = 3,
     }
 }

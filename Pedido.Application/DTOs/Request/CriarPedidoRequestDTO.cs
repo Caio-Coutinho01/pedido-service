@@ -7,10 +7,12 @@ namespace Pedido.Application.DTOs.Request
     {
         [SwaggerSchema("Identificador único do pedido")]
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "PedidoId deve ser maior que zero.")]
         public int PedidoId { get; set; }
 
         [SwaggerSchema("Identificador do cliente")]
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "ClienteId deve ser maior que zero.")]
         public int ClienteId { get; set; }
 
         [SwaggerSchema("Lista de itens do pedido")]
@@ -22,6 +24,7 @@ namespace Pedido.Application.DTOs.Request
     {
         [SwaggerSchema("Identificador do produto")]
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "ProdutoId deve ser maior que zero.")]
         public int ProdutoId { get; set; }
 
         [SwaggerSchema("Quantidade de itens")]
@@ -32,4 +35,5 @@ namespace Pedido.Application.DTOs.Request
         [Range(0.01, double.MaxValue, ErrorMessage = "O valor deve ser maior que zero.")]
         public decimal Valor { get; set; }
     }
+
 }
