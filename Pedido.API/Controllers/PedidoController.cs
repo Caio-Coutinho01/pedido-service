@@ -25,12 +25,17 @@ namespace Pedido.API.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
                 var response = await _pedidoService.CriarPedidoAsync(request);
                 return CreatedAtAction(nameof(ConsultarPedido), new { id = response.Id }, response);
             }
-            catch (InvalidOperationException ex)
+            catch (ApplicationException ex)
             {
-                return BadRequest(new { erro = ex.Message });
+                return BadRequest(new { erro = ex.InnerException?.Message ?? ex.Message });
             }
         }
 
@@ -65,7 +70,7 @@ namespace Pedido.API.Controllers
             }
             catch (ApplicationException ex)
             {
-                return BadRequest(new { Erro = ex.Message });
+                return BadRequest(new { erro = ex.InnerException?.Message ?? ex.Message });
             }
         }
 
@@ -88,5 +93,24 @@ namespace Pedido.API.Controllers
                 return BadRequest(new { Erro = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Enviar todos os pedidos já criados.
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("enviar-todos-criados")]
+        public async Task<IActionResult> EnviarTodosCriados()
+        {
+            try
+            {
+                int totalEnviados = await _pedidoService.EnviarPedidosCriadosAsync();
+                return Ok(new { TotalEnviados = totalEnviados });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { erro = ex.InnerException?.Message ?? ex.Message });
+            }
+        }
+
     }
 }

@@ -44,7 +44,7 @@ namespace Pedido.Application.Services
                     throw new InvalidOperationException("Este pedido já existe.");
 
                 var pedido = _mapper.Map<PedidoEntity>(requestDto);
-                pedido.Status = PedidoStatus.Criado;
+                pedido.DefinirStatus(PedidoStatus.Criado);
 
                 var usarNovaRegra = await _featureManager.IsEnabledAsync(FeatureFlags.UsarNovaRegraImposto);
                 pedido.CalcularImposto(usarNovaRegra);
@@ -52,16 +52,13 @@ namespace Pedido.Application.Services
                 await _pedidoRepository.AdicionarAsync(pedido);
                 await _pedidoRepository.SalvarAlteracoesAsync();
 
-                var response = _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
-                await _mediator.Publish(new PedidoCriadoEvent(response));
-
                 return _mapper.Map<CriarPedidoResponseDTO>(pedido);
 
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao criar o pedido com Id: {Id}", requestDto.PedidoId);
-                throw new ApplicationException($"Erro ao criar o pedido {requestDto.PedidoId}.", ex);
+                throw new ApplicationException($"Erro ao criar o pedido. {ex.Message}", ex);
             }
         }
 
@@ -79,7 +76,7 @@ namespace Pedido.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao criar o pedido com Id: {Id}", id);
-                throw new ApplicationException($"Erro ao consultar o pedido {id}.", ex);
+                throw new ApplicationException($"Erro ao consultar o pedido. {ex.Message}", ex);
             }
         }
 
@@ -88,7 +85,7 @@ namespace Pedido.Application.Services
         {
             try
             {
-                var pedidos = await _pedidoRepository.ObterPorStatusAsync(status);
+                var pedidos = await _pedidoRepository.ObterPedidosPorStatusAsync(status);
 
                 return _mapper.Map<List<ConsultarPedidoResponseDTO>>(pedidos);
             }
@@ -123,8 +120,37 @@ namespace Pedido.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao cancelar o pedido com Id: {Id}", id);
-                throw new ApplicationException($"Erro ao cancelar o pedido {id}.", ex);
+                throw new ApplicationException($"Erro ao cancelar o pedido. {ex.Message}", ex);
             }
         }
+
+        public async Task<int> EnviarPedidosCriadosAsync()
+        {
+            int totalEnviados = 0;
+            try
+            {
+                var pedidosCriados = await _pedidoRepository.ObterPedidosPorStatusAsync(PedidoStatus.Criado);
+
+                foreach (var pedido in pedidosCriados)
+                {
+                    var pedidoDTO = _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
+                    await _mediator.Publish(new PedidoCriadoEvent(pedidoDTO));
+
+                    pedido.EnviarPedido();
+
+                    totalEnviados++;
+                }
+
+                await _pedidoRepository.SalvarAlteracoesAsync();
+
+                return totalEnviados;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao enviar pedidos criados ao sistema de destino.");
+                throw new ApplicationException("Erro ao enviar pedidos criados.", ex);
+            }
+        }
+
     }
 }

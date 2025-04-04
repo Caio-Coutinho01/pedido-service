@@ -7,8 +7,8 @@ namespace Pedido.Domain.Interfaces
     {
         Task<bool> PedidoExisteAsync(int pedidoId);
         Task AdicionarAsync(PedidoEntity pedido);
-        Task<PedidoEntity?> ObterPorIdAsync(int id);
-        Task<List<PedidoEntity>> ObterPorStatusAsync(PedidoStatus status);
+        Task<PedidoEntity?> ObterPorIdAsync(int PedidoId);
+        Task<List<PedidoEntity>> ObterPedidosPorStatusAsync(PedidoStatus status);
         Task SalvarAlteracoesAsync();
     }
 }

@@ -42,6 +42,11 @@ namespace TestInfrastructure
                 services.AddSingleton(mapperConfig.CreateMapper());
             }
 
+            services.AddSingleton<Pedido.Application.Interfaces.Integrations.PedidoDestino.IPedidoDestinoService>
+                (Substitute.For<Pedido.Application.Interfaces.Integrations.PedidoDestino.IPedidoDestinoService>());
+
+            services.AddSingleton<MediatR.IMediator>(Substitute.For<MediatR.IMediator>());
+
             services.AddScoped<PedidoService>();
 
             return services.BuildServiceProvider();

@@ -2,12 +2,22 @@
 {
     public class PedidoItemEntity
     {
-        public int Id { get; set; }
-        public int ProdutoId { get; set; }
-        public int Quantidade { get; set; }
-        public decimal Valor { get; set; }
+        public int Id { get; private set; }
+        public int ProdutoId { get; private set; }
+        public int Quantidade { get; private set; }
+        public decimal Valor { get; private set; }
 
-        public int PedidoEntityId { get; set; }
-        public PedidoEntity Pedido { get; set; }
+        public int PedidoEntityId { get; private set; }
+        public PedidoEntity Pedido { get; private set; }
+
+        public PedidoItemEntity(int produtoId, int quantidade, decimal valor)
+        {
+            ProdutoId = produtoId;
+            Quantidade = quantidade;
+            Valor = valor;
+        }
+
+        private PedidoItemEntity() { }
+
     }
 }

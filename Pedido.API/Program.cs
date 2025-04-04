@@ -12,9 +12,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
 // Configuração do Serilog
-builder.Host.UseSerilog((context, services, configuration) =>
+builder.Host.UseSerilog((context, loggerConfig) =>
 {
-    configuration.ReadFrom.Configuration(context.Configuration).Enrich.FromLogContext().WriteTo.Console();
+    try
+    {
+        loggerConfig
+            .ReadFrom.Configuration(context.Configuration)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .WriteTo.MSSqlServer(
+                connectionString: context.Configuration.GetConnectionString("DefaultConnection"),
+                sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+                {
+                    TableName = "Logs",
+                    AutoCreateSqlTable = true
+                },
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
+            );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Serilog falhou durante startup (provavelmente execução de migrations). Erro: " + ex.Message);
+    }
 });
 #endregion
 

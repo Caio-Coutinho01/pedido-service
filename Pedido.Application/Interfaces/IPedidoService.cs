@@ -10,5 +10,6 @@ namespace Pedido.Application.Interfaces
         Task<ConsultarPedidoResponseDTO?> ConsultarPedidoPorIdAsync(int id);
         Task<List<ConsultarPedidoResponseDTO>> ListarPedidosPorStatusAsync(PedidoStatus status);
         Task<CancelarPedidoResponseDTO> CancelarPedidoAsync(int id, CancelarPedidoRequestDTO dto);
+        Task<int> EnviarPedidosCriadosAsync();
     }
 }

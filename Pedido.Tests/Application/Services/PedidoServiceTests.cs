@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
 using FluentAssertions;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Pedido.Application.DTOs.Request;
+using Pedido.Application.Events;
 using Pedido.Application.Services;
 using Pedido.Domain.Entities;
 using Pedido.Domain.Enums;
@@ -157,39 +159,21 @@ namespace Pedido.Tests.Application.Services
         #region Consulta do pedido
 
         [Theory]
-        [InlineData(PedidoStatus.Processado)]
+        [InlineData(PedidoStatus.Enviado)]
         [InlineData(PedidoStatus.Criado)]
         public async Task ListarPedidosPorStatusAsync_DeveRetornarPedidosFiltradosComSucesso(PedidoStatus status)
         {
             var serviceProvider = ServiceTestFactory.BuildServiceProvider();
-
             using var scope = serviceProvider.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
             var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
 
-            var pedidosMock = new List<PedidoEntity>
-            {
-                new()
-                {
-                   Id = 1,
-                   PedidoId = 101,
-                   ClienteId = 1001,
-                   Status = status,
-                   Imposto = 15,
-                   Itens = new List<PedidoItemEntity>{new() { ProdutoId = 500, Quantidade = 1, Valor = 25 }}
-                },
-                new()
-                {
-                   Id = 2,
-                   PedidoId = 102,
-                   ClienteId = 1002,
-                   Status = status,
-                   Imposto = 30,
-                   Itens = new List<PedidoItemEntity>{new() { ProdutoId = 501, Quantidade = 2, Valor = 30 }}
-                }
-            };
+            var pedido1 = PedidoEntity.Criar(101, 1001, status, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
+            var pedido2 = PedidoEntity.Criar(102, 1002, status, new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
 
-            repository.ObterPorStatusAsync(status).Returns(pedidosMock);
+            var pedidosMock = new List<PedidoEntity> { pedido1, pedido2 };
+
+            repository.ObterPedidosPorStatusAsync(status).Returns(pedidosMock);
 
             var resultado = await service.ListarPedidosPorStatusAsync(status);
 
@@ -197,6 +181,7 @@ namespace Pedido.Tests.Application.Services
             resultado.Should().HaveCount(2);
             resultado.All(p => p.Status == status.ToString()).Should().BeTrue();
         }
+
 
         [Fact]
         public async Task ConsultarPedidoPorIdAsync_DeveRetornarPedidoQuandoExistirComSucesso()
@@ -207,15 +192,7 @@ namespace Pedido.Tests.Application.Services
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
             var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
 
-            var pedido = new PedidoEntity
-            {
-                Id = 1,
-                PedidoId = 101,
-                ClienteId = 1001,
-                Status = PedidoStatus.Criado,
-                Imposto = 15,
-                Itens = new List<PedidoItemEntity> { new() { ProdutoId = 500, Quantidade = 1, Valor = 25 } }
-            };
+            var pedido = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
 
             repository.ObterPorIdAsync(1).Returns(pedido);
 
@@ -254,7 +231,7 @@ namespace Pedido.Tests.Application.Services
         public async Task ListarPedidosPorStatusAsync_ErroNoRepositorio_DeveLancarExcecao()
         {
             var repository = Substitute.For<IPedidoRepository>();
-            repository.ObterPorStatusAsync(Arg.Any<PedidoStatus>())
+            repository.ObterPedidosPorStatusAsync(Arg.Any<PedidoStatus>())
                       .Throws(new Exception("Falha ao acessar o repositório"));
 
             var serviceProvider = ServiceTestFactory.BuildServiceProvider(pedidoRepositoryMock: repository);
@@ -282,6 +259,108 @@ namespace Pedido.Tests.Application.Services
             var exception = await act.Should().ThrowAsync<ApplicationException>();
             exception.Which.InnerException!.Message.Should().Be("Pedido não encontrado com o ID: 999");
         }
+
+        #endregion
+
+        #region Cancelamento do pedido
+
+        [Fact]
+        public async Task CancelarPedidoAsync_DeveCancelarPedidoComSucesso()
+        {
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+            var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
+
+            var pedido = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
+            repository.ObterPorIdAsync(101).Returns(pedido);
+            repository.SalvarAlteracoesAsync().Returns(Task.CompletedTask);
+
+            var cancelRequest = new CancelarPedidoRequestDTO
+            {
+                JustificativaCancelamento = "Cliente solicitou cancelamento"
+            };
+
+            var response = await service.CancelarPedidoAsync(101, cancelRequest);
+
+            response.Should().NotBeNull();
+            response.Sucesso.Should().BeTrue();
+            response.Mensagem.Should().Contain("cancelado com sucesso");
+            pedido.Status.Should().Be(PedidoStatus.Cancelado);
+        }
+
+        [Fact]
+        public async Task CancelarPedidoAsync_PedidoNaoCriado_DeveLancarExcecao()
+        {
+            
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+            var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
+
+            var pedido = PedidoEntity.Criar(102, 1002, PedidoStatus.Enviado, new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
+            repository.ObterPorIdAsync(102).Returns(pedido);
+
+            var cancelRequest = new CancelarPedidoRequestDTO
+            {
+                JustificativaCancelamento = "Cliente solicitou cancelamento"
+            };
+
+            Func<Task> act = async () => await service.CancelarPedidoAsync(102, cancelRequest);
+
+            var exception = await act.Should().ThrowAsync<ApplicationException>();
+            exception.Which.Message.Should().Contain($"Erro ao cancelar o pedido 102");
+        }
+
+
+        #endregion
+
+        #region Envio do pedido
+
+        [Fact]
+        public async Task EnviarPedidosCriadosAsync_DeveEnviarPedidosEAlterarStatusParaEnviado()
+        {
+            
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+            var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+
+            var pedido1 = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
+            var pedido2 = PedidoEntity.Criar(102, 1002, PedidoStatus.Criado,new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
+            var pedidosCriados = new List<PedidoEntity> { pedido1, pedido2 };
+
+            repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(pedidosCriados);
+            repository.SalvarAlteracoesAsync().Returns(Task.CompletedTask);
+
+            await service.EnviarPedidosCriadosAsync();
+
+            await mediator.Received(2).Publish(Arg.Any<PedidoCriadoEvent>(), Arg.Any<CancellationToken>());
+            pedido1.Status.Should().Be(PedidoStatus.Enviado);
+            pedido2.Status.Should().Be(PedidoStatus.Enviado);
+            await repository.Received(1).SalvarAlteracoesAsync();
+        }
+
+        [Fact]
+        public async Task EnviarPedidosCriadosAsync_ErroAoSalvarAlteracoes_DeveLancarExcecao()
+        {
+            
+            var serviceProvider = ServiceTestFactory.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
+            var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
+
+            var pedido = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
+            repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(new List<PedidoEntity> { pedido });
+            repository.SalvarAlteracoesAsync().Returns<Task>(_ => throw new Exception("Erro ao salvar"));
+
+            Func<Task> act = async () => await service.EnviarPedidosCriadosAsync();
+
+            var exception = await act.Should().ThrowAsync<ApplicationException>();
+            exception.Which.InnerException!.Message.Should().Be("Erro ao salvar");
+        }
+
 
         #endregion
     }
