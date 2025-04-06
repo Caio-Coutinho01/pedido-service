@@ -222,7 +222,7 @@ namespace Pedido.Tests.Unit.Services
 
             var exception = await act.Should().ThrowAsync<ApplicationException>();
 
-            exception.Which.Message.Should().Be("Erro ao consultar o pedido 1.");
+            exception.Which.Message.Should().Be("Erro ao consultar o pedido. Pedido não encontrado com o ID: 1");
             exception.Which.InnerException.Should().BeOfType<ApplicationException>();
             exception.Which.InnerException!.Message.Should().Be("Pedido não encontrado com o ID: 1");
         }
@@ -309,9 +309,8 @@ namespace Pedido.Tests.Unit.Services
             Func<Task> act = async () => await service.CancelarPedidoAsync(102, cancelRequest);
 
             var exception = await act.Should().ThrowAsync<ApplicationException>();
-            exception.Which.Message.Should().Contain($"Erro ao cancelar o pedido 102");
+            exception.Which.Message.Should().Contain($"O Pedido 102 não pode ser cancelado");
         }
-
 
         #endregion
 
