@@ -98,8 +98,8 @@ namespace Pedido.API.Controllers
         /// Enviar todos os pedidos já criados.
         /// </summary>
         /// <returns></returns>
-        [HttpPost("enviar-todos-criados")]
-        public async Task<IActionResult> EnviarTodosCriados()
+        [HttpPost("enviar-pedidos-elegiveis")]
+        public async Task<IActionResult> EnviarPedidosElegiveis()
         {
             try
             {

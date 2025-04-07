@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
+using Pedido.Application.Configuration;
 using Pedido.Application.DTOs.Request;
 using Pedido.Application.DTOs.Response;
 using Pedido.Application.Events;
@@ -22,9 +24,10 @@ namespace Pedido.Application.Services
         private readonly IMapper _mapper;
         private readonly IPedidoDestinoService _pedidoDestinoService;
         private readonly IMediator _mediator;
+        private readonly IOptionsMonitor<EnvioPedidosOptions> _optionsMonitor;
 
-        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager, 
-            ILogger<PedidoService> logger, IMapper mapper, IPedidoDestinoService pedidoDestinoService, IMediator mediator)
+        public PedidoService(IPedidoRepository pedidoRepository, IFeatureManager featureManager,
+            ILogger<PedidoService> logger, IMapper mapper, IPedidoDestinoService pedidoDestinoService, IMediator mediator, IOptionsMonitor<EnvioPedidosOptions> optionsMonitor)
         {
             _pedidoRepository = pedidoRepository ?? throw new ArgumentNullException(nameof(pedidoRepository));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
@@ -32,6 +35,7 @@ namespace Pedido.Application.Services
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _pedidoDestinoService = pedidoDestinoService ?? throw new ArgumentNullException(nameof(pedidoDestinoService));
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+            _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
         }
 
         public async Task<CriarPedidoResponseDTO> CriarPedidoAsync(CriarPedidoRequestDTO requestDto)
@@ -127,30 +131,28 @@ namespace Pedido.Application.Services
         public async Task<int> EnviarPedidosCriadosAsync()
         {
             int totalEnviados = 0;
-            try
-            {
-                var pedidosCriados = await _pedidoRepository.ObterPedidosPorStatusAsync(PedidoStatus.Criado);
 
-                foreach (var pedido in pedidosCriados)
+            var tentativas = _optionsMonitor.CurrentValue.MaxTentativas;
+            var pedidos = await _pedidoRepository.ObterPedidosElegiveisParaEnvioAsync(tentativas);
+
+            foreach (var pedido in pedidos)
+            {
+                try
                 {
                     var pedidoDTO = _mapper.Map<ConsultarPedidoResponseDTO>(pedido);
                     await _mediator.Publish(new PedidoCriadoEvent(pedidoDTO));
-
                     pedido.EnviarPedido();
-
                     totalEnviados++;
                 }
-
-                await _pedidoRepository.SalvarAlteracoesAsync();
-
-                return totalEnviados;
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao enviar pedido {PedidoId}", pedido.PedidoId);
+                    pedido.ErroAoEnviarPedido();
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao enviar pedidos criados ao sistema de destino.");
-                throw new ApplicationException("Erro ao enviar pedidos criados.", ex);
-            }
+
+            await _pedidoRepository.SalvarAlteracoesAsync();
+            return totalEnviados;
         }
-
     }
 }

@@ -12,6 +12,7 @@ namespace Pedido.Domain.Entities
         public string? JustificativaCancelamento { get; private set; }
         public DateTime DataCriacao { get; private set; } = DateTime.UtcNow;
         public DateTime? DataEnvio { get; private set; }
+        public int TentativasEnvio { get; private set; }
 
         public List<PedidoItemEntity> Itens { get; private set; } = new();
 
@@ -60,5 +61,7 @@ namespace Pedido.Domain.Entities
             DataEnvio = DateTime.UtcNow;
             Status = PedidoStatus.Enviado;
         }
+
+        public void ErroAoEnviarPedido() => Status = PedidoStatus.ErroEnvio;
     }
 }

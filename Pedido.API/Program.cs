@@ -7,11 +7,12 @@ using Pedido.Domain.Enums;
 using Pedido.Infrastructure.DependencyInjection;
 using Serilog;
 using System.Reflection;
+using Hangfire;
 
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
-// Configuração do Serilog
+// Configuraï¿½ï¿½o do Serilog
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
     try
@@ -32,7 +33,7 @@ builder.Host.UseSerilog((context, loggerConfig) =>
     }
     catch (Exception ex)
     {
-        Console.WriteLine("Serilog falhou durante startup (provavelmente execução de migrations). Erro: " + ex.Message);
+        Console.WriteLine("Serilog falhou durante startup (provavelmente execuï¿½ï¿½o de migrations). Erro: " + ex.Message);
     }
 });
 #endregion
@@ -70,6 +71,17 @@ builder.Services.AddInfrastructure(connectionString).AddApplication();
 // MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Pedido.Application.AssemblyReference).Assembly));
 
+// HangFire
+builder.Services.AddHangfire(config =>
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+          .UseSimpleAssemblyNameTypeSerializer()
+          .UseRecommendedSerializerSettings()
+          .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+builder.Services.AddHangfireServer();
+
+builder.Services.Configure<EnvioPedidosOptions>(builder.Configuration.GetSection("EnvioPedidos"));
+
 #endregion
 
 var app = builder.Build();
@@ -89,6 +101,11 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseRouting();
+
+app.UseHangfireDashboard();
+Pedido.API.BackgroundJobs.JobScheduler.ConfigurarJobs();
 
 #endregion
 

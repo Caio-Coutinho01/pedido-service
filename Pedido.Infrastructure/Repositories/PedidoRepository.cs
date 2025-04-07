@@ -55,5 +55,16 @@ namespace Pedido.Infrastructure.Repositories
                 throw new ApplicationException("Erro ao salvar os dados no banco de dados.", ex);
             }
         }
+
+        public async Task<List<PedidoEntity>> ObterPedidosElegiveisParaEnvioAsync(int maxTentativas)
+        {
+            return await _context.Pedidos
+                .Include(p => p.Itens)
+                .Where(p =>
+                    (p.Status == PedidoStatus.Criado || p.Status == PedidoStatus.ErroEnvio) &&
+                    p.TentativasEnvio < maxTentativas
+                )
+                .ToListAsync();
+        }
     }
 }
