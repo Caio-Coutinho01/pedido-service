@@ -104,7 +104,7 @@ O projeto utiliza **Serilog** configurado para armazenar logs de erros e avisos 
 
 ### Execução:
 
-`git clone https://github.com/SeuUsuario/pedido-service.git`
+`git clone https://github.com/Caio-Coutinho01/pedido-service.git`
 
 ###### Restore
 

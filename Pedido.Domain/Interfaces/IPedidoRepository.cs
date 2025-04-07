@@ -10,5 +10,6 @@ namespace Pedido.Domain.Interfaces
         Task<PedidoEntity?> ObterPorIdAsync(int PedidoId);
         Task<List<PedidoEntity>> ObterPedidosPorStatusAsync(PedidoStatus status);
         Task SalvarAlteracoesAsync();
+        Task<List<PedidoEntity>> ObterPedidosElegiveisParaEnvioAsync(int maxTentativas);
     }
 }
