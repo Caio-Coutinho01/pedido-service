@@ -2,8 +2,10 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
+using Pedido.Application.Configuration;
 using Pedido.Application.DTOs.Request;
 using Pedido.Application.Interfaces.Integrations.PedidoDestino;
 using Pedido.Application.Mappings;
@@ -31,7 +33,10 @@ namespace Pedido.Tests.Integration.Services
             var pedidoDestinoService = Substitute.For<IPedidoDestinoService>();
             var mediator = Substitute.For<IMediator>();
 
-            return new PedidoService(repository, featureManager, loggerService, mapper, pedidoDestinoService, mediator);
+            var pedidoOptions = Substitute.For<IOptionsMonitor<EnvioPedidosOptions>>();
+            pedidoOptions.CurrentValue.Returns(new EnvioPedidosOptions { MaxTentativas = 3 });
+
+            return new PedidoService(repository, featureManager, loggerService, mapper, pedidoDestinoService, mediator, pedidoOptions);
         }
 
         [Fact]

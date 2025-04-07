@@ -5,5 +5,6 @@
         Criado = 1,
         Enviado = 2,
         Cancelado = 3,
+        ErroEnvio = 4
     }
 }

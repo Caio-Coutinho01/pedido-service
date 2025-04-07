@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pedido.Infrastructure.Persistence.Context;
 
@@ -11,9 +12,11 @@ using Pedido.Infrastructure.Persistence.Context;
 namespace Pedido.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PedidoDbContext))]
-    partial class PedidoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250407042617_AdicionaTentativasEnvio")]
+    partial class AdicionaTentativasEnvio
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
