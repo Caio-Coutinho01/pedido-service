@@ -16,7 +16,7 @@ public static class PollyPolicies
 
         var breaker = Policy
             .Handle<Exception>()
-            .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30),
+            .CircuitBreakerAsync(15, TimeSpan.FromSeconds(30),
                 onBreak: (ex, ts) => logger.LogWarning($"Circuit breaker ativado por {ts.TotalSeconds}s. Erro: {ex.Message}"),
                 onReset: () => logger.LogInformation("Circuit breaker resetado."));
 

@@ -133,7 +133,7 @@ namespace Pedido.Application.Services
             int totalEnviados = 0;
 
             var tentativas = _optionsMonitor.CurrentValue.MaxTentativas;
-            var pedidos = await _pedidoRepository.ObterPedidosElegiveisParaEnvioAsync(tentativas);
+            var pedidos = await _pedidoRepository.ObterPedidosElegiveisParaEnvioAsync(tentativas) ?? new List<PedidoEntity>();
 
             foreach (var pedido in pedidos)
             {
@@ -151,7 +151,16 @@ namespace Pedido.Application.Services
                 }
             }
 
-            await _pedidoRepository.SalvarAlteracoesAsync();
+            try
+            {
+                await _pedidoRepository.SalvarAlteracoesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao salvar alterações após envio dos pedidos.");
+                throw new ApplicationException("Erro ao salvar alterações no envio dos pedidos.", ex);
+            }
+
             return totalEnviados;
         }
     }

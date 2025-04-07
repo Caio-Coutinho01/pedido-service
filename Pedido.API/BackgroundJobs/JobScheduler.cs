@@ -7,9 +7,6 @@ public static class JobScheduler
 {
     public static void ConfigurarJobs()
     {
-        RecurringJob.AddOrUpdate<IPedidoService>(
-            "enviar-pedidos-criados",
-            service => service.EnviarPedidosCriadosAsync(), "*/5 * * * *"
-        );
+        RecurringJob.AddOrUpdate<IPedidoService>("enviar-pedidos-elegiveis", service => service.EnviarPedidosCriadosAsync(), "*/5 * * * *");
     }
 }

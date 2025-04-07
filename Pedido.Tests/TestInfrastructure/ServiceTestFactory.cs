@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
+using Pedido.Application.Configuration;
 using Pedido.Application.Mappings;
 using Pedido.Application.Services;
 using Pedido.Domain.Constants;
@@ -16,7 +18,8 @@ namespace TestInfrastructure
             bool usarNovaRegraImposto = false, 
             IPedidoRepository? pedidoRepositoryMock = null, 
             ILogger<PedidoService>? loggerMock = null, 
-            IMapper? mapper = null)
+            IMapper? mapper = null,
+            IOptionsMonitor<EnvioPedidosOptions>? options = null)
         {
             var services = new ServiceCollection();
 
@@ -29,17 +32,21 @@ namespace TestInfrastructure
 
             services.AddSingleton(loggerMock ?? Substitute.For<ILogger<PedidoService>>());
 
-            if (mapper != null)
+            var mapperConfig = new MapperConfiguration(cfg =>
             {
-                services.AddSingleton(mapper);
+                cfg.AddProfile<PedidoProfile>();
+            });
+            services.AddSingleton<IMapper>(mapper ?? mapperConfig.CreateMapper());
+
+            if (options != null)
+            {
+                services.AddSingleton(options);
             }
             else
             {
-                var mapperConfig = new MapperConfiguration(cfg =>
-                {
-                    cfg.AddProfile<PedidoProfile>();
-                });
-                services.AddSingleton(mapperConfig.CreateMapper());
+                var optionsMock = Substitute.For<IOptionsMonitor<EnvioPedidosOptions>>();
+                optionsMock.CurrentValue.Returns(new EnvioPedidosOptions { MaxTentativas = 3 });
+                services.AddSingleton(optionsMock);
             }
 
             services.AddSingleton<Pedido.Application.Interfaces.Integrations.PedidoDestino.IPedidoDestinoService>

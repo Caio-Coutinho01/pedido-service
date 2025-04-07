@@ -10,10 +10,12 @@ namespace Pedido.API.Controllers
     public class PedidoController : ControllerBase
     {
         private readonly IPedidoService _pedidoService;
+        private readonly IHostEnvironment _env;
 
-        public PedidoController(IPedidoService pedidoService)
+        public PedidoController(IPedidoService pedidoService, IHostEnvironment env)
         {
             _pedidoService = pedidoService ?? throw new ArgumentNullException(nameof(pedidoService));
+            _env = env ?? throw new ArgumentNullException(nameof(env));
         }
 
         /// <summary>
@@ -112,5 +114,25 @@ namespace Pedido.API.Controllers
             }
         }
 
+        [HttpPost("seed")]
+        public async Task<IActionResult> CriarPedidosFake([FromQuery] int quantidade = 50)
+        {
+            if (!_env.IsDevelopment())
+                return Forbid("Esse endpoint só pode ser usado em ambiente de desenvolvimento.");
+
+            for (int i = 0; i < quantidade; i++)
+            {
+                var request = new CriarPedidoRequestDTO
+                {
+                        PedidoId = 900000 + i,
+                        ClienteId = 123,
+                        Itens = new List<ItemPedidoDTO>{new ItemPedidoDTO {ProdutoId = 5000 + i, Quantidade = 1,Valor = 10 + i}}
+                };
+
+                await _pedidoService.CriarPedidoAsync(request);
+            }
+
+            return Ok($"{quantidade} pedidos criados com sucesso.");
+        }
     }
 }

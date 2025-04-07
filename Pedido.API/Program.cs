@@ -12,30 +12,28 @@ using Hangfire;
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
-// Configura��o do Serilog
+// Configuração do Serilog
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
-    try
-    {
-        loggerConfig
-            .ReadFrom.Configuration(context.Configuration)
-            .Enrich.FromLogContext()
-            .WriteTo.Console()
-            .WriteTo.MSSqlServer(
-                connectionString: context.Configuration.GetConnectionString("DefaultConnection"),
-                sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
-                {
-                    TableName = "Logs",
-                    AutoCreateSqlTable = true
-                },
-                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
-            );
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Serilog falhou durante startup (provavelmente execu��o de migrations). Erro: " + ex.Message);
-    }
+    loggerConfig
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Filter.ByExcluding(logEvent =>
+            logEvent.Properties.ContainsKey("RequestPath") &&
+            logEvent.Properties["RequestPath"].ToString().Contains("/hangfire"))
+        .WriteTo.Console()
+        .WriteTo.MSSqlServer(
+            connectionString: context.Configuration.GetConnectionString("DefaultConnection"),
+            sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+            {
+                TableName = "Logs",
+                AutoCreateSqlTable = true
+            },
+            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information
+        );
 });
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog();
 #endregion
 
 #region Add Services

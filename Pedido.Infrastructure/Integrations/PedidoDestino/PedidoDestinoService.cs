@@ -22,6 +22,7 @@ namespace Pedido.Infrastructure.Integrations.PedidoDestino
             {
                 _logger.LogInformation($"Enviando pedido {pedido.PedidoId} para o sistema B...");
 
+                // Apenas simulando a falha aleatorio para testar a resiliência, forçando polly a executar o retry.
                 if (new Random().Next(1, 4) == 1)
                     throw new Exception("Erro simulado no envio");
             });

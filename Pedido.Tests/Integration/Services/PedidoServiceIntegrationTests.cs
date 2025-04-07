@@ -228,5 +228,38 @@ namespace Pedido.Tests.Integration.Services
                 .WithMessage($"Erro ao cancelar o pedido. O Pedido {createdResponse.Id} não pode ser cancelado, pois já está em processamento ou cancelado!*");
         }
 
+        [Fact]
+        public async Task DeveCriarQuinhentosPedidosComSucesso()
+        {
+            var service = CriarService();
+            var quantidade = 500;
+
+            for (int i = 0; i < quantidade; i++)
+            {
+                var request = new CriarPedidoRequestDTO
+                {
+                    PedidoId = 100000 + i,
+                    ClienteId = 123,
+                    Itens = new List<ItemPedidoDTO>
+            {
+                new ItemPedidoDTO
+                {
+                    ProdutoId = 2000 + i,
+                    Quantidade = 1,
+                    Valor = 10 + i
+                }
+            }
+                };
+
+                await service.CriarPedidoAsync(request);
+            }
+
+            var pedidosDb = DbContext.Pedidos.Where(p => p.PedidoId >= 100000).ToList();
+
+            pedidosDb.Should().HaveCount(quantidade);
+            pedidosDb.All(p => p.Status == PedidoStatus.Criado).Should().BeTrue();
+        }
+
+
     }
 }

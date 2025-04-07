@@ -330,7 +330,7 @@ namespace Pedido.Tests.Unit.Services
             var pedido2 = PedidoEntity.Criar(102, 1002, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(501, 2, 30) });
             var pedidosCriados = new List<PedidoEntity> { pedido1, pedido2 };
 
-            repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(pedidosCriados);
+            repository.ObterPedidosElegiveisParaEnvioAsync(Arg.Any<int>()).Returns(pedidosCriados);
             repository.SalvarAlteracoesAsync().Returns(Task.CompletedTask);
 
             await service.EnviarPedidosCriadosAsync();
@@ -344,14 +344,15 @@ namespace Pedido.Tests.Unit.Services
         [Fact]
         public async Task EnviarPedidosCriadosAsync_ErroAoSalvarAlteracoes_DeveLancarExcecao()
         {
-
             var serviceProvider = ServiceTestFactory.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<PedidoService>();
             var repository = scope.ServiceProvider.GetRequiredService<IPedidoRepository>();
 
             var pedido = PedidoEntity.Criar(101, 1001, PedidoStatus.Criado, new List<PedidoItemEntity> { new PedidoItemEntity(500, 1, 25) });
-            repository.ObterPedidosPorStatusAsync(PedidoStatus.Criado).Returns(new List<PedidoEntity> { pedido });
+
+            repository.ObterPedidosElegiveisParaEnvioAsync(Arg.Any<int>()).Returns(new List<PedidoEntity> { pedido });
+
             repository.SalvarAlteracoesAsync().Returns(_ => throw new Exception("Erro ao salvar"));
 
             Func<Task> act = async () => await service.EnviarPedidosCriadosAsync();
@@ -359,7 +360,6 @@ namespace Pedido.Tests.Unit.Services
             var exception = await act.Should().ThrowAsync<ApplicationException>();
             exception.Which.InnerException!.Message.Should().Be("Erro ao salvar");
         }
-
 
         #endregion
     }
