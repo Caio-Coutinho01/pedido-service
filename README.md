@@ -6,15 +6,17 @@ Serviço responsável por receber, processar e disponibilizar pedidos, com cálc
 
 ## Tecnologias Utilizadas
 
-* .NET 8
-* Entity Framework Core 9
-* MediatR
-* AutoMapper
-* FluentValidation
-* Serilog
-* Feature Management
-* XUnit + NSubstitute + FluentAssertions
-* Arquitetura DDD + Clean Code + SOLID
+- .NET 8
+- Entity Framework Core 9
+- MediatR
+- AutoMapper
+- FluentValidation
+- Serilog
+- Feature Management
+- Polly (Retry + Circuit Breaker)
+- Hangfire (Jobs recorrentes)
+- XUnit + NSubstitute + FluentAssertions
+- Arquitetura DDD + Clean Code + SOLID
 
 ## Ferramentas Complementares
 
@@ -25,24 +27,26 @@ Serviço responsável por receber, processar e disponibilizar pedidos, com cálc
 
 ## Funcionalidades
 
-* Recebimento e persistência de pedidos
-* Cálculo de imposto com base em feature flag
-* Cancelamento de pedidos com justificativa
-* Listagem e filtragem por status
-* Consulta de pedido por ID
-* Envio para sistema externo (simulado) via MediatR (Event-Driven)
-* Logs de erros persistidos no SQL Server via Serilog
-* Documentação automática via Swagger
+- Recebimento e persistência de pedidos
+- Cálculo de imposto com base em feature flag
+- Cancelamento de pedidos com justificativa
+- Listagem e consulta por status e ID
+- Envio de pedidos ao sistema externo (Sistema B) via Event-Driven
+- Reprocessamento automático de pedidos com falha
+- Controle de tentativas e status por pedido
+- Logs persistidos no SQL Server via Serilog
+- Monitoramento e reprocesso por Jobs (Hangfire)
+- Documentação automática via Swagger
 
 ---
 
 ## Estrutura do Projeto
 
-* **Pedido.API:** Responsável por receber as requisições HTTP e expor os endpoints da aplicação (ex: criação, consulta, listagem de pedidos).
-* **Pedido.Application:** Onde ficam as regras de negócio, validações, serviços de aplicação e o uso do MediatR pra orquestrar as ações.
-* **Pedido.Domain:** Contém as entidades do sistema (Pedido, Item, etc.), enums e objetos de valor. Tudo que representa o “coração” da regra de domínio.
-* **Pedido.Infrastructure:** Cuida da persistência (EF Core), configuração do Serilog, e simulação de integrações externas (como o envio para Sistema B).
-* **Pedido.Tests:** Abriga todos os testes: unitários com mocks e testes de integração com containers Docker.
+- **Pedido.API:** Camada de apresentação, onde são expostos os endpoints HTTP (Swagger incluso).
+- **Pedido.Application:** Regras de negócio, validações, serviços de aplicação, eventos e handlers.
+- **Pedido.Domain:** Entidades ricas, objetos de valor, enums e regras centrais de domínio.
+- **Pedido.Infrastructure:** Persistência com EF Core, Serilog, políticas de retry (Polly), e integrações externas (simulação Sistema B).
+- **Pedido.Tests:** Testes unitários com mocks e testes de integração utilizando containers Docker.
 
 ---
 
@@ -52,7 +56,7 @@ Serviço responsável por receber, processar e disponibilizar pedidos, com cálc
 - **GET** `/api/pedidos/{id}` → Consultar pedido por ID
 - **GET** `/api/pedidos?status={status}` → Listar pedidos por status
 - **POST** `/api/pedidos/{id}/cancelar` → Cancelar pedido com justificativa
-- **POST** `/api/pedidos/enviar-todos-criados` → Enviar pedidos com status Criado para sistema externo (Sistema B)
+- **POST** `/api/pedidos/enviar-todos-elegiveis` → Reprocessar pedidos com status `Criado` ou `ErroEnvio`
 
 ## Exemplos de Request/Response
 
@@ -87,9 +91,14 @@ Serviço responsável por receber, processar e disponibilizar pedidos, com cálc
 
 ---
 
+## Reprocessamento Automático (Hangfire + Retry)
+Um job recorrente executado a cada 5 minutos (via Hangfire) reprocessa todos os pedidos com status Criado ou ErroEnvio.
+Cada pedido tem controle individual de tentativas (TentativasEnvio) com limite configurável via appsettings.json.
+Se o pedido falhar 3 vezes consecutivas, é marcado como ErroEnvio, evitando loops infinitos.
+
 ## Logs e Monitoramento
 
-O projeto utiliza **Serilog** configurado para armazenar logs de erros e avisos em uma tabela SQL Server (`Logs`).
+O projeto utiliza **Serilog** configurado para armazenar logs de erros e avisos em uma tabela SQL Server (`Logs`). Eventos como falha de envio, circuit breaker, e erros de infraestrutura são rastreados com detalhamento para análise posterior.
 
 ---
 
@@ -110,7 +119,7 @@ O projeto utiliza **Serilog** configurado para armazenar logs de erros e avisos 
 
 dotnet restore
 
-###### Aplicar Migrations (caso use SQL Server)
+###### Aplicar Migrations (caso use SQL Server), recomendo abrir o package manager console
 
 `dotnet ef database update --project Pedido.Infrastructure --startup-project Pedido.API`
 
@@ -181,3 +190,5 @@ Exemplo de configuração no `appsettings.json`:
 * Separação clara de responsabilidades entre camadas
 * Testes focados em comportamento e regras de negócio
 * Projeto preparado para escalar, com feature flags e arquitetura orientada a eventos
+* Políticas de retry e circuit breaker com Polly
+* Controle de falhas e reprocessos com Hangfire
